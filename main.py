@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Annotated
 import models
 import schemas
+import httpx
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -109,3 +110,29 @@ async def fetch_transport_revenue(db: Session = Depends(get_db)):
         "records": result,
         "total_revenue": total_revenue
     }
+
+@app.get("/execute_api_route/{route_id}") 
+async def execute_api_route(route_id: int, db: Session = Depends(get_db)):
+    db_route = db.query(models.APIRoute).filter(models.APIRoute.id == route_id).first()
+    if db_route is None:
+        raise HTTPException(status_code=404, detail="API Route not found")
+
+    # Construct the request
+    method = db_route.method.lower()
+    url = db_route.path
+    headers = {"Authorization": f"Bearer {db_route.auth_info}"} if db_route.auth_info else {}
+
+    # Execute the request using httpx
+    async with httpx.AsyncClient() as client:
+        try:
+            request_func = getattr(client, method)
+            response = await request_func(url, headers=headers)
+
+            # Handle non-200 responses
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail="Error from the API route")
+
+            return response.json()
+
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=500, detail=f"An error occurred while requesting {url}.") from e

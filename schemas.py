@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class ContactResponse(BaseModel):
     id: int
@@ -20,3 +21,20 @@ class ContactCreate(BaseModel):
     city: str
     zipCode: str
     registrarId: int
+
+class APIRouteBase(BaseModel):
+    method: str
+    path: str
+    description: Optional[str] = None
+
+class APIRouteCreate(APIRouteBase):
+    auth_info: Optional[str] = None
+    parameters: Optional[dict] = None
+
+class APIRoute(APIRouteBase):
+    id: int
+    auth_info: Optional[str] = None
+    parameters: Optional[dict] = None
+
+    class Config:
+        orm_mode = True
